@@ -10,6 +10,34 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+class Conv2DNN(nn.Module):
+    def __init__(self):
+        super(Conv2DNN, self).__init__()
+        self.fc1 = nn.Conv2d(1, 4, 4)
+        self.fc2 = nn.Flatten()
+        # For an input of size (H_in, W_in) with:
+        # - Kernel size (K)
+        # - Padding (P)
+        # - Stride (S)
+        # - Dilation (D)
+        # The output size (H_out, W_out) is computed as:
+        # H_out = floor( (H_in + 2 * P - D * (K - 1) - 1) / S ) + 1
+        # W_out = floor( (W_in + 2 * P - D * (K - 1) - 1) / S ) + 1
+        self.fc3 = nn.Linear(4 * 25 * 25, 128)
+        self.fc4 = nn.Linear(128, 10)
+        self.activation = torch.relu
+
+    def forward(self, x):
+        x = self.fc1(x)
+        x = self.activation(x)
+
+        x = self.fc2(x)
+        x = self.fc3(x)
+        x = self.fc4(x)
+
+        return x
+
+
 class LinearNN(nn.Module):
     def __init__(self):
         super(LinearNN, self).__init__()
@@ -73,7 +101,7 @@ test_dataset = torchvision.datasets.MNIST(root='./data', train=False, download=T
 train_loader = DataLoader(dataset=train_dataset, batch_size=64, shuffle=True)
 test_loader = DataLoader(dataset=test_dataset, batch_size=64, shuffle=False)
 
-model = LinearNN()
+model = Conv2DNN()
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adagrad(model.parameters(), lr=0.01)
 train(model, train_loader, criterion, optimizer)
