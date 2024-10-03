@@ -38,6 +38,26 @@ class Conv2DNN(nn.Module):
         return x
 
 
+class Conv1DNN(nn.Module):
+    def __init__(self):
+        super(Conv1DNN, self).__init__()
+
+        self.layers = nn.ModuleList([
+            nn.Conv1d(1, 4, kernel_size=4, stride=1, padding=0),
+            nn.ReLU(),
+            nn.Flatten(),
+            nn.Linear(3124, 10)
+        ])
+
+    def forward(self, x):
+        # the input for conv1d needs converting to 3D (ironically);
+        x = x.view(x.size(0), 1, -1)
+        for layer in self.layers:
+            x = layer(x)
+
+        return x
+
+
 class LinearNN(nn.Module):
     def __init__(self):
         super(LinearNN, self).__init__()
@@ -101,7 +121,7 @@ test_dataset = torchvision.datasets.MNIST(root='./data', train=False, download=T
 train_loader = DataLoader(dataset=train_dataset, batch_size=64, shuffle=True)
 test_loader = DataLoader(dataset=test_dataset, batch_size=64, shuffle=False)
 
-model = Conv2DNN()
+model = Conv1DNN()
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adagrad(model.parameters(), lr=0.01)
 train(model, train_loader, criterion, optimizer)
