@@ -58,19 +58,57 @@ class Conv1DNN(nn.Module):
         return x
 
 
+def self_flatten_no_rec(x: torch.Tensor) -> torch.Tensor:
+    flattened = []
+
+    stack = [x]
+
+    while stack:
+        current = stack.pop()
+
+        if current.dim() == 0:
+            flattened.append(current.item())
+        else:
+            stack.extend(reversed(current))
+    return torch.tensor(flattened, dtype=x.dtype).reshape(x.size(0), -1)
+
+
+def self_flatten_rec(x: torch.Tensor):
+    def base(dim_n, out=None):
+        if out is None:
+            out = []
+
+        if dim_n.dim() == 0:
+            out.append(dim_n.item())
+            return out
+
+        for dim_n_1 in dim_n:
+            base(dim_n_1, out)
+
+        return out
+
+    return torch.tensor(base(x)).reshape(x.size(0), -1)
+
+
 class LinearNN(nn.Module):
+
+    def self_relu(self, x):
+        return torch.tensor([(el if el > 0 else 0) for el in x])
+
     def __init__(self):
         super(LinearNN, self).__init__()
-        self.flatten = nn.Flatten()
-        self.fc1 = nn.Linear(28 * 28, 128)
-        self.fc2 = nn.Linear(128, 10)
+        self.flatten = self_flatten_no_rec
+        self.fc1 = nn.Linear(28 * 28, 32)
+        self.fc2 = nn.Linear(32, 10)
         self.activation = torch.relu
 
     def forward(self, x):
-        x = self.flatten(x)
-        x = self.activation(self.fc1(x))
-        x = self.fc2(x)
-
+        try:
+            x = self_flatten_no_rec(x)
+            x = self.activation(self.fc1(x))
+            x = self.fc2(x)
+        except:
+            print(x.shape)
         return x
 
 
@@ -121,7 +159,7 @@ test_dataset = torchvision.datasets.MNIST(root='./data', train=False, download=T
 train_loader = DataLoader(dataset=train_dataset, batch_size=64, shuffle=True)
 test_loader = DataLoader(dataset=test_dataset, batch_size=64, shuffle=False)
 
-model = Conv1DNN()
+model = LinearNN()
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adagrad(model.parameters(), lr=0.01)
 train(model, train_loader, criterion, optimizer)
