@@ -52,6 +52,7 @@ class Conv1DNN(nn.Module):
     def forward(self, x):
         # the input for conv1d needs converting to 3D (ironically);
         x = x.view(x.size(0), 1, -1)
+
         for layer in self.layers:
             x = layer(x)
 
@@ -73,6 +74,11 @@ def self_flatten_no_rec(x: torch.Tensor) -> torch.Tensor:
     return torch.tensor(flattened, dtype=x.dtype).reshape(x.size(0), -1)
 
 
+def self_relu(x):
+    eps = 0.001
+    return torch.where(x > 0, x, eps)
+
+
 def self_flatten_rec(x: torch.Tensor):
     def base(dim_n, out=None):
         if out is None:
@@ -91,24 +97,18 @@ def self_flatten_rec(x: torch.Tensor):
 
 
 class LinearNN(nn.Module):
-
-    def self_relu(self, x):
-        return torch.tensor([(el if el > 0 else 0) for el in x])
-
     def __init__(self):
         super(LinearNN, self).__init__()
-        self.flatten = self_flatten_no_rec
+        self.flatten = nn.Flatten()
         self.fc1 = nn.Linear(28 * 28, 32)
         self.fc2 = nn.Linear(32, 10)
-        self.activation = torch.relu
+        self.activation = self_relu
 
     def forward(self, x):
-        try:
-            x = self_flatten_no_rec(x)
-            x = self.activation(self.fc1(x))
-            x = self.fc2(x)
-        except:
-            print(x.shape)
+        x = self.flatten(x)
+        x = self.activation(self.fc1(x))
+        x = self.fc2(x)
+
         return x
 
 
@@ -151,16 +151,27 @@ def test(model, loader, show_figs=False):
     print(f'Accuracy: {100 * correct / total:.2f}%')
 
 
-transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0,), (0.25,))])
+def train_main():
+    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0,), (0.25,))])
 
-train_dataset = torchvision.datasets.MNIST(root='./data', train=True, download=True, transform=transform)
-test_dataset = torchvision.datasets.MNIST(root='./data', train=False, download=True, transform=transform)
+    train_dataset = torchvision.datasets.MNIST(root='./data', train=True, download=True, transform=transform)
+    test_dataset = torchvision.datasets.MNIST(root='./data', train=False, download=True, transform=transform)
 
-train_loader = DataLoader(dataset=train_dataset, batch_size=64, shuffle=True)
-test_loader = DataLoader(dataset=test_dataset, batch_size=64, shuffle=False)
+    train_loader = DataLoader(dataset=train_dataset, batch_size=64, shuffle=True)
+    test_loader = DataLoader(dataset=test_dataset, batch_size=64, shuffle=False)
 
-model = LinearNN()
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adagrad(model.parameters(), lr=0.01)
-train(model, train_loader, criterion, optimizer)
-test(model, test_loader)
+    model = LinearNN()
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adagrad(model.parameters(), lr=0.01)
+    train(model, train_loader, criterion, optimizer)
+    test(model, test_loader)
+
+
+train_main()
+
+# x = torch.tensor([2.0, 4.0], requires_grad=True)
+# y = torch.tensor([1.0, 2.0])
+# z = x @ y
+# z.backward()
+# print(z)
+# print(x.grad)
